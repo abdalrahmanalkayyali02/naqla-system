@@ -1,0 +1,145 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+// ==========================================
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  INACTIVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PlayerType {
+  FIDE     // Registered with FIDE ID and official rating
+  NATIONAL // Registered with National Federation only (No FIDE)
+  UNRATED  // Casual / Unrated player without formal affiliation
+}
+
+enum PlayerTitle {
+  // Open / General Titles (FIDE)
+  GM  // Grandmaster
+  IM  // International Master
+  FM  // FIDE Master
+  CM  // Candidate Master
+
+  // Women's Titles (FIDE)
+  WGM // Woman Grandmaster
+  WIM // Woman International Master
+  WFM // Woman FIDE Master
+  WCM // Woman Candidate Master
+
+  // National Titles
+  NM  // National Master
+  WNM // Woman National Master
+}
+
+enum TimeControlCategory {
+  BULLET
+  BLITZ
+  RAPID
+  CLASSICAL
+}
+
+// ==========================================
+// Models
+// ==========================================
+
+model User {
+  id                    String     @id @default(uuid())
+  username              String     @unique @map("user_name")
+  email                 String     @unique
+  isEmailVerified       Boolean    @default(false) @map("is_email_verified")
+  phoneDialCode         String?    @map("phone_dial_code")
+  phoneNumber           String?    @map("phone_number")
+  isPhoneNumberVerified Boolean    @default(false) @map("is_phone_number_verified")
+  isMfaEnabled          Boolean    @default(false) @map("is_mfa_enabled")
+  status                UserStatus @default(ACTIVE)
+  isVerifiedUser        Boolean    @default(false) @map("is_verified_user")
+  verifiedAt            DateTime?  @map("verified_at")
+  isDeleted             Boolean    @default(false) @map("is_deleted")
+  deletedAt             DateTime?  @map("deleted_at")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+
+  profile       UserProfile?
+  playerProfile PlayerProfile?
+
+  @@map("users")
+}
+
+model UserProfile {
+  id        String  @id @default(uuid())
+  userId    String  @unique @map("user_id")
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  gender    Gender?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model PlayerProfile {
+  id               String       @id @default(uuid())
+  userId           String       @unique @map("user_id")
+  fullName         String       @map("full_name")
+  gender           Gender?
+  fideId           String?      @map("fide_id")
+  playerFederation String?      @map("player_federation") // ISO 3166-1 alpha-3 country code
+
+  // Affiliation & Titles
+  playerType       PlayerType   @default(UNRATED) @map("player_type")
+  playerTitle      PlayerTitle? @map("player_title")
+
+  // Snapshot Ratings (Current Ratings)
+  classicalRating  Int          @default(1500) @map("classical_rating")
+  blitzRating      Int          @default(1500) @map("blitz_rating")
+  rapidRating      Int          @default(1500) @map("rapid_rating")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ratingEvents RatingEvent[]
+
+  @@map("player_profiles")
+}
+
+model RatingEvent {
+  id              String              @id @default(uuid())
+  playerId        String              @map("player_id")
+  tournamentId    String?             @map("tournament_id")
+  tournamentName  String              @map("tournament_name")
+  gameId          String?             @map("game_id")
+  category        TimeControlCategory
+
+  // Time control parameters (Base + Increment)
+  baseTimeSeconds  Int                @map("base_time_seconds")
+  incrementSeconds Int                @map("increment_seconds")
+
+  // Rating change & game outcome
+  ratingBefore    Int                 @map("rating_before")
+  ratingChange    Int                 @map("rating_change")
+  ratingAfter     Int                 @map("rating_after")
+  opponentRating  Int                 @map("opponent_rating")
+  result          Float               @map("result") // 1.0 = Win, 0.5 = Draw, 0.0 = Loss
+
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  player PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, category])
+  @@map("rating_events")
+}
