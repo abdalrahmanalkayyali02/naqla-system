@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: naqla-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: naqla-system
+      POSTGRES_DB: naqla-system
+    ports:
+      - "5433:5432"
+    volumes:
+      - naqla-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: naqla-redis
+    command: redis-server --requirepass redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: naqla-redisinsight
+    ports:
+      - "8001:5540"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: naqla-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  # Mock Development Services
+  backend:
+    image: nginx:alpine
+    container_name: naqla-backend
+    ports:
+      - "5000:80"
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    container_name: naqla-frontend
+    ports:
+      - "5012:80"
+    restart: unless-stopped
+
+  organization:
+    image: nginx:alpine
+    container_name: naqla-organization
+    ports:
+      - "5013:80"
+    restart: unless-stopped
+
+  participle:
+    image: nginx:alpine
+    container_name: naqla-participle
+    ports:
+      - "5014:80"
+    restart: unless-stopped
+
+volumes:
+  naqla-db-data:
