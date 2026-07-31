@@ -3,7 +3,7 @@ import { CreateStandardPlayerDto, StandardPlayerResponseDto } from "../../dtos/p
 
 export interface IUserService {
 
-  createPlayer(
+  createStandardPlayer(
     playerData: CreateStandardPlayerDto,
   ): Promise<Result<StandardPlayerResponseDto>>;
 
