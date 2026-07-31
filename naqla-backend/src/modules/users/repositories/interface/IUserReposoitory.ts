@@ -1,5 +1,8 @@
 // src/modules/users/domain/repositories/user.repository.interface.ts
 
+import { IUser } from '../contract/User';
+
+export const USER_REPOSITORY = Symbol('IUserRepository');
 
 export interface CreateUserData {
   username: string;
@@ -15,7 +18,8 @@ export interface UpdateUserData {
 }
 
 export interface IUserRepository {
-  create(data: CreateUserData): Promise<any>;
+  create(data: CreateUserData): Promise<IUser>;
+  findByEmail(email: string): Promise<IUser | null>;
+  findByUsername(username: string): Promise<IUser | null>;
+  findByPhone(phoneDialCode: string, phoneNumber: string): Promise<IUser | null>;
 }
-
-export const USER_REPOSITORY = Symbol('IUserRepository');
