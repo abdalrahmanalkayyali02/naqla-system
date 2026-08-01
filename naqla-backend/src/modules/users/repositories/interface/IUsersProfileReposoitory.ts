@@ -8,12 +8,8 @@ export interface CreateUserProfileData {
   userId: string;
   firstName: string;
   lastName: string;
-  username: string;
-  email: string;
-  phoneNumber: string;
-  phoneNumber_dialCode: string;
-  gender: Gender;
-  dateOfBirth: Date;
+  gender?: Gender;
+  dateOfBirth?: Date;
 }
 
 export interface ChesPlayerFideData {
