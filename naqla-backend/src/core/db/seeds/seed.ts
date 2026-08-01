@@ -4,6 +4,7 @@
 import 'dotenv/config';
 import { PrismaClient, LanguageDirection } from '../../../../generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { seedGeography } from './seedGeography';
 
 // ── Prisma v7: must supply the adapter (no url in schema.prisma) ──────────────
 const adapter = new PrismaPg({
@@ -293,6 +294,8 @@ async function main() {
   }
 
   console.log(`  ✅ ${permissionDefs.length} permissions seeded\n`);
+
+  await seedGeography(prisma, enLang.id, arLang.id);
 
   // ══════════════════════════════════════════════════════════════════════════
   // Done
