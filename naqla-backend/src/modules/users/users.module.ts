@@ -1,10 +1,11 @@
 // src/modules/users/users.module.ts
 
 import { Module } from '@nestjs/common';
-import {
-  AuthRegistrationController,
-  USER_SERVICE,
-} from './controllers/AuthRegistration.controller';
+import { AccountRegistrationController } from './controllers/AccountRegistration.controller';
+import { AuthController } from './controllers/Auth.controller';
+
+// Service interface (DI token)
+import { ACCOUNT_REGISTRATION_SERVICE } from './services/interface/IAccountRegistrationService';
 
 // FIDE external module
 import { FideModule } from 'src/modules/fide/fide.module';
@@ -22,18 +23,18 @@ import { PlayerProfileRepository } from './repositories/PlayerProfileRepository'
 import { FideRatingSnapshotRepository } from './repositories/FideRatingSnapshotRepository';
 
 // Services
-import { UserService } from './services/UserService.service';
+import { AccountRegistrationService } from './services/AccountRegistrationService';
 
 @Module({
   imports: [
     FideModule, // provides & exports FIDE_PROVIDER + LichessFideProviderAdapter
   ],
-  controllers: [AuthRegistrationController],
+  controllers: [AccountRegistrationController, AuthController],
   providers: [
     // ── Service ──────────────────────────────────────────────────────────
     {
-      provide:  USER_SERVICE,
-      useClass: UserService,
+      provide:  ACCOUNT_REGISTRATION_SERVICE,
+      useClass: AccountRegistrationService,
     },
     // ── Repositories ─────────────────────────────────────────────────────
     {
@@ -53,6 +54,6 @@ import { UserService } from './services/UserService.service';
       useClass: FideRatingSnapshotRepository,
     },
   ],
-  exports: [USER_SERVICE],
+  exports: [ACCOUNT_REGISTRATION_SERVICE],
 })
 export class UsersModule {}

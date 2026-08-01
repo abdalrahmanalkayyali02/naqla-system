@@ -8,9 +8,13 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MinLength,
   Matches,
 } from 'class-validator';
 import { Gender } from '../../../../common/enums/user-gender';
+
+// Helper function لترتيب كائن الرسالة Bilingual
+const msg = (en: string, ar: string) => JSON.stringify({ en, ar });
 
 // ==========================================
 // REQUEST DTO
@@ -18,45 +22,51 @@ import { Gender } from '../../../../common/enums/user-gender';
 
 export class CreateStandardPlayerDto {
   @ApiProperty({ example: 'kasparov' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: msg('Username must be a string', 'اسم المستخدم يجب أن يكون نصاً') })
+  @IsNotEmpty({ message: msg('Username is required', 'اسم المستخدم مطلوب ولا يمكن أن يكون فارغاً') })
   username!: string;
 
   @ApiProperty({ example: 'garry.kasparov@example.com' })
-  @IsEmail()
-  @IsNotEmpty()
+  @IsEmail({}, { message: msg('Invalid email address format', 'صيغة البريد الإلكتروني غير صالحة') })
+  @IsNotEmpty({ message: msg('Email is required', 'البريد الإلكتروني مطلوب ولا يمكن أن يكون فارغاً') })
   email!: string;
 
+  @ApiProperty({ example: 'P@ssword123!', description: 'Minimum 8 characters' })
+  @IsString({ message: msg('Password must be a string', 'كلمة المرور يجب أن تكون نصاً') })
+  @IsNotEmpty({ message: msg('Password is required', 'كلمة المرور مطلوبة ولا يمكن أن تكون فارغة') })
+  @MinLength(8, { message: msg('Password must be at least 8 characters long', 'كلمة المرور يجب أن تتكون من 8 أحرف على الأقل') })
+  password!: string;
+
   @ApiProperty({ example: '+962' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: msg('Phone dial code must be a string', 'رمز الدولة يجب أن يكون نصاً') })
+  @IsNotEmpty({ message: msg('Phone dial code is required', 'رمز الدولة مطلوب') })
   phoneDialCode!: string;
 
   @ApiProperty({ example: '791234567' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: msg('Phone number must be a string', 'رقم الهاتف يجب أن يكون نصاً') })
+  @IsNotEmpty({ message: msg('Phone number is required', 'رقم الهاتف مطلوب') })
   phoneNumber!: string;
 
   @ApiProperty({ example: 'Garry Kasparov' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: msg('Full name must be a string', 'الاسم الكامل يجب أن يكون نصاً') })
+  @IsNotEmpty({ message: msg('Full name is required', 'الاسم الكامل مطلوب') })
   fullName!: string;
 
   @ApiProperty({ example: '1963-04-13', description: 'Format strictly as YYYY-MM-DD' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: msg('Date of birth must be a string', 'تاريخ الميلاد يجب أن يكون نصاً') })
+  @IsNotEmpty({ message: msg('Date of birth is required', 'تاريخ الميلاد مطلوب') })
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'dateOfBirth must be formatted strictly as YYYY-MM-DD',
+    message: msg('dateOfBirth must be formatted strictly as YYYY-MM-DD', 'تاريخ الميلاد يجب أن يكون بالصيغة YYYY-MM-DD'),
   })
   dateOfBirth!: string;
 
   @ApiProperty({ enum: Gender, example: Gender.MALE })
-  @IsEnum(Gender)
-  @IsNotEmpty()
+  @IsEnum(Gender, { message: msg('Invalid gender value', 'قيمة الجنس غير صالحة') })
+  @IsNotEmpty({ message: msg('Gender is required', 'حقل الجنس مطلوب') })
   gender!: Gender;
 
   @ApiPropertyOptional({ example: '4100018' })
-  @IsString()
+  @IsString({ message: msg('FIDE ID must be a string', 'معرف FIDE يجب أن يكون نصاً') })
   @IsOptional()
   fideId?: string;
 }

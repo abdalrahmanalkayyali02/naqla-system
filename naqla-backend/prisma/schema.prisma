@@ -102,13 +102,6 @@ enum DeviceType {
   TABLET
 }
 
-enum TournamentRole {
-  ORGANIZER
-  CHIEF_ARBITER
-  ARBITER
-  PLAYER
-  SPECTATOR
-}
 
 // ==========================================
 // Core User & Player Models
@@ -121,11 +114,15 @@ model User {
   cityId                Int?         @map("city_id")
   username              String       @unique @map("username")
   email                 String       @unique
-  isEmailVerified       Boolean      @default(false) @map("is_email_verified")
+  emailVerified         Boolean      @default(false) @map("email_verified")
+  image                 String?      @map("image")
   phoneDialCode         String?      @map("phone_dial_code")
   phoneNumber           String?      @map("phone_number")
   isPhoneNumberVerified Boolean      @default(false) @map("is_phone_number_verified")
-  isMfaEnabled          Boolean      @default(false) @map("is_mfa_enabled")
+  
+  // Better Auth Two-Factor Field
+  twoFactorEnabled      Boolean      @default(false) @map("two_factor_enabled")
+  
   status                UserStatus   @default(ACTIVE)
   isVerifiedUser        Boolean      @default(false) @map("is_verified_user")
   authProvider          AuthProvider @default(LOCAL)
@@ -143,12 +140,71 @@ model User {
   city                   City?                   @relation("UserCity", fields: [cityId], references: [id], onDelete: SetNull)
   devices                Device[]
   userSessions           UserSession[]
-  tournamentParticipants TournamentParticipant[]
+
+  // Better Auth Required Relations
+  sessions               Session[]
+  accounts               Account[]
+  twoFactors             TwoFactor[]
 
   @@index([roleId])
   @@index([countryId])
   @@index([cityId])
   @@map("users")
+}
+
+// ==========================================
+// Better Auth Core Tables
+// ==========================================
+
+model Session {
+  id        String   @id @default(uuid(7))
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid(7)) @map("id")
+  userId                String    @map("user_id")
+  accountId             String    @map("account_id") // Google/Apple External User ID
+  providerId            String    @map("provider_id") // 'google', 'apple', 'credential'
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  idToken               String?   @map("id_token")
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model TwoFactor {
+  id          String   @id @default(uuid(7))
+  userId      String   @map("user_id")
+  secret      String
+  backupCodes String   @map("backup_codes")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factors")
 }
 
 model UserProfile {
@@ -220,40 +276,7 @@ model FideRatingSnapshot {
   @@map("fide_rating_snapshots")
 }
 
-// ==========================================
-// Tournament Scoped Models
-// ==========================================
 
-model Tournament {
-  id          String              @id @default(uuid(7))
-  name        String
-  description String?
-  category    TimeControlCategory
-  startDate   DateTime            @map("start_date")
-  endDate     DateTime?           @map("end_date")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
-
-  participants TournamentParticipant[]
-
-  @@map("tournaments")
-}
-
-model TournamentParticipant {
-  id           String         @id @default(uuid(7))
-  tournamentId String         @map("tournament_id")
-  userId       String         @map("user_id")
-  role         TournamentRole @default(PLAYER)
-  registeredAt DateTime       @default(now()) @map("registered_at")
-
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-
-  @@unique([tournamentId, userId]) // يمنع تسجيل نفس المستخدم بأكثر من دور في نفس البطولة
-  @@index([userId])
-  @@index([tournamentId])
-  @@map("tournament_participants")
-}
 
 // ==========================================
 // Localization & Reference Models
@@ -290,13 +313,12 @@ model Role {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  // Self-referential parent/child hierarchy
   parentRole Role?  @relation("RoleHierarchy", fields: [parentRoleId], references: [id], onDelete: SetNull)
   childRoles Role[] @relation("RoleHierarchy")
 
-  users        User[] // One Role -> Many Users
+  users        User[]
   translations RoleTranslation[]
-  permissions  RolePermission[] // One Role -> Many Permissions
+  permissions  RolePermission[]
   devices      Device[]
   userSessions UserSession[]
 
@@ -354,7 +376,6 @@ model PermissionTranslation {
   @@map("permission_translations")
 }
 
-// Many-to-Many: Role <-> Permission
 model RolePermission {
   roleId       String   @map("role_id")
   permissionId String   @map("permission_id")
@@ -498,7 +519,7 @@ model CityTranslation {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// DEVICES & SESSIONS
+// DEVICES & SESSIONS (Custom Application Tracking)
 // ═══════════════════════════════════════════════════════════════════════
 
 model Device {

@@ -2,9 +2,10 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/db/PrismaService';
-import { IUser } from './contract/User';
-import { CreateUserData, IUserRepository } from './interface/IUserReposoitory';
+
 import { UserStatus } from 'src/common/enums/user-status';
+import { CreateUserData, IUserRepository, UpdateUserData } from './interface/IUserReposoitory';
+import { IUser } from './contract/User';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -25,6 +26,7 @@ export class UserRepository implements IUserRepository {
   async create(data: CreateUserData): Promise<IUser> {
     const user = await this.prisma.user.create({
       data: {
+        ...(data.id && { id: data.id }),
         username: data.username,
         email: data.email,
         phoneDialCode: data.phoneDialCode,
@@ -33,6 +35,29 @@ export class UserRepository implements IUserRepository {
       },
     });
     return this.mapToDomain(user);
+  }
+
+  async update(id: string, data: UpdateUserData): Promise<IUser> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.username && { username: data.username }),
+        ...(data.email && { email: data.email }),
+        ...(data.phoneDialCode && { phoneDialCode: data.phoneDialCode }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+        ...(data.roleId && { roleId: data.roleId }),
+        ...(data.status && { status: data.status as any }),
+        ...(data.isVerifiedUser !== undefined && { isVerifiedUser: data.isVerifiedUser }),
+      },
+    });
+    return this.mapToDomain(user);
+  }
+
+  async findById(id: string): Promise<IUser | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    return user ? this.mapToDomain(user) : null;
   }
 
   async findByEmail(email: string): Promise<IUser | null> {

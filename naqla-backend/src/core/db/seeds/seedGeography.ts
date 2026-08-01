@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import csv from 'csv-parser';
-import { PrismaClient } from '../../../../generated/prisma';
+import { PrismaClient, Prisma } from '../../../../generated/prisma';
 
 export async function seedGeography(prisma: PrismaClient, enLangId: string, arLangId: string) {
   const parseCSV = (filePath: string) => {
@@ -101,7 +101,7 @@ export async function seedGeography(prisma: PrismaClient, enLangId: string, arLa
         native: s.native || null,
         latitude: s.latitude ? parseFloat(s.latitude) : null,
         longitude: s.longitude ? parseFloat(s.longitude) : null,
-        timezone: s.timezone ? { name: s.timezone } : null,
+        timezone: s.timezone ? { name: s.timezone } : Prisma.JsonNull,
         wikiDataId: s.wikiDataId || null,
         population: s.population ? parseInt(s.population) : 0,
         translations: {

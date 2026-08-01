@@ -22,9 +22,9 @@ export class PlayerProfileRepository implements IPlayerProfileRepository {
         playerFederation: data.playerFederation,
         playerType: data.playerType as any,
         playerTitle: data.playerTitle as any,
-        classicalRating: data.classicalRating ?? 1500,
-        blitzRating: data.blitzRating ?? 1500,
-        rapidRating: data.rapidRating ?? 1500,
+        classicalRating: data.classicalRating ?? 0,
+        blitzRating: data.blitzRating ?? 0,
+        rapidRating: data.rapidRating ?? 0,
         yearOfBirth: data.yearOfBirth, // Updated: matches schema model
       },
     });
