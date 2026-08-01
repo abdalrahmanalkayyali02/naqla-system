@@ -9,6 +9,7 @@ export interface CreateUserData {
   email: string;
   phoneDialCode?: string;
   phoneNumber?: string;
+  roleId?: string;
 }
 
 export interface UpdateUserData {

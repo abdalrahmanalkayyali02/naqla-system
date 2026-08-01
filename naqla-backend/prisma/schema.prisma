@@ -1,7 +1,5 @@
 // This is your Prisma schema file
 
-
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -11,6 +9,7 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
 // Enums
 // ==========================================
 
@@ -57,13 +56,19 @@ enum TimeControlCategory {
   CLASSICAL
 }
 
+enum LanguageDirection {
+  LTR
+  RTL
+}
+
 // ==========================================
-// Models
+// Core User & Player Models
 // ==========================================
 
 model User {
   id                    String     @id @default(uuid())
-  username              String     @unique @map("user_name")
+  roleId                String?    @map("role_id") // One User -> One Role
+  username              String     @unique @map("username")
   email                 String     @unique
   isEmailVerified       Boolean    @default(false) @map("is_email_verified")
   phoneDialCode         String?    @map("phone_dial_code")
@@ -78,19 +83,21 @@ model User {
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 
+  role          Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
   profile       UserProfile?
   playerProfile PlayerProfile?
 
+  @@index([roleId])
   @@map("users")
 }
 
 model UserProfile {
-  id        String  @id @default(uuid())
-  userId    String  @unique @map("user_id")
-  firstName String  @map("first_name")
-  lastName  String  @map("last_name")
-  gender    Gender?
-  dateOfBirth      DateTime? @map("date_of_birth") @db.Date
+  id          String    @id @default(uuid())
+  userId      String    @unique @map("user_id")
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  gender      Gender?
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -101,7 +108,7 @@ model PlayerProfile {
   id               String       @id @default(uuid())
   userId           String       @unique @map("user_id")
   fullName         String       @map("full_name")
-  dateOfBirth      DateTime? @map("date_of_birth") @db.Date
+  yearOfBirth      Int?         @map("year_of_birth")
   gender           Gender?
   fideId           String?      @map("fide_id")
   playerFederation String?      @map("player_federation") // ISO 3166-1 alpha-3 country code
@@ -115,35 +122,149 @@ model PlayerProfile {
   blitzRating      Int          @default(1500) @map("blitz_rating")
   rapidRating      Int          @default(1500) @map("rapid_rating")
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ratingEvents RatingEvent[]
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ratingSnapshots FideRatingSnapshot[]
 
   @@map("player_profiles")
 }
 
-model RatingEvent {
+// Monthly FIDE Time-Series & Rating Event Snapshots
+model FideRatingSnapshot {
   id              String              @id @default(uuid())
   playerId        String              @map("player_id")
-  tournamentId    String?             @map("tournament_id")
-  tournamentName  String              @map("tournament_name")
-  gameId          String?             @map("game_id")
   category        TimeControlCategory
 
-  // Time control parameters (Base + Increment)
-  baseTimeSeconds  Int                @map("base_time_seconds")
-  incrementSeconds Int                @map("increment_seconds")
+  // Event & Tournament Details
+  tournamentName  String              @default("FIDE Rating List") @map("tournament_name")
 
-  // Rating change & game outcome
+  // Time Control Details (in seconds)
+  baseTimeSeconds  Int                @default(0) @map("base_time_seconds")
+  incrementSeconds Int                @default(0) @map("increment_seconds")
+
+  // Rating Progression & Outcome
   ratingBefore    Int                 @map("rating_before")
   ratingChange    Int                 @map("rating_change")
   ratingAfter     Int                 @map("rating_after")
   opponentRating  Int                 @map("opponent_rating")
-  result          Float               @map("result") // 1.0 = Win, 0.5 = Draw, 0.0 = Loss
+  result          Float               @default(0.0) @map("result") // 1.0 = Win, 0.5 = Draw, 0.0 = Loss
 
-  createdAt       DateTime            @default(now()) @map("created_at")
+  // Date Snapshot Metadata
+  snapshotYear    Int                 @map("snapshot_year")
+  snapshotMonth   Int                 @map("snapshot_month")
+  recordedAt      DateTime            @map("recorded_at") @db.Date
 
   player PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([playerId, category])
-  @@map("rating_events")
+  @@index([snapshotYear, snapshotMonth])
+  @@map("fide_rating_snapshots")
+}
+
+// ==========================================
+// Localization & Reference Models
+// ==========================================
+
+model Language {
+  id         String            @id @default(uuid())
+  code       String            @unique // ISO 639-1/BCP47: 'en', 'ar'
+  nativeName String            @map("native_name") // 'العربية', 'English'
+  isDefault  Boolean           @default(false) @map("is_default")
+  isActive   Boolean           @default(true) @map("is_active")
+  direction  LanguageDirection @default(LTR)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  roleTranslations       RoleTranslation[]
+  permissionTranslations PermissionTranslation[]
+
+  @@map("languages")
+}
+
+// ==========================================
+// RBAC: Roles, Permissions & Translations
+// ==========================================
+
+model Role {
+  id           String    @id @default(uuid())
+  code         String    @unique // 'SUPER_ADMIN', 'ORGANIZER', 'ARBITER', 'PLAYER'
+  parentRoleId String?   @map("parent_role_id")
+  isSystem     Boolean   @default(false) @map("is_system")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Self-referential parent/child hierarchy
+  parentRole   Role?     @relation("RoleHierarchy", fields: [parentRoleId], references: [id], onDelete: SetNull)
+  childRoles   Role[]    @relation("RoleHierarchy")
+
+  users        User[]              // One Role -> Many Users
+  translations RoleTranslation[]
+  permissions  RolePermission[]    // One Role -> Many Permissions
+
+  @@index([parentRoleId])
+  @@index([isActive])
+  @@map("roles")
+}
+
+model RoleTranslation {
+  id          String   @id @default(uuid())
+  roleId      String   @map("role_id")
+  languageId  String   @map("language_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Restrict)
+
+  @@unique([roleId, languageId])
+  @@index([languageId, roleId])
+  @@map("role_translations")
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  code      String   @unique // 'USER_DELETE', 'TOURNAMENT_CREATE'
+  module    String   // UI grouping: 'users', 'tournaments', 'billing'
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations PermissionTranslation[]
+  roles        RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model PermissionTranslation {
+  id           String   @id @default(uuid())
+  permissionId String   @map("permission_id")
+  languageId   String   @map("language_id")
+  name         String
+  description  String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  language   Language   @relation(fields: [languageId], references: [id], onDelete: Restrict)
+
+  @@unique([permissionId, languageId])
+  @@index([languageId, permissionId])
+  @@map("permission_translations")
+}
+
+// Many-to-Many: Role <-> Permission
+model RolePermission {
+  roleId       String   @map("role_id")
+  permissionId String   @map("permission_id")
+  grantedAt    DateTime @default(now()) @map("granted_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
 }

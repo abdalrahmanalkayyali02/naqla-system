@@ -26,13 +26,14 @@ import {
   PLAYER_PROFILE_REPOSITORY,
 } from '../repositories/interface/IPlayerProfileRepository';
 import {
-  type IRatingEventRepository,
-  RATING_EVENT_REPOSITORY,
-} from '../repositories/interface/IRatingEventReposoitory';
+  type IFideRatingSnapshotRepository,
+  FIDE_RATING_SNAPSHOT_REPOSITORY,
+} from '../repositories/interface/IFideRatingSnapshotRepository';
 import {
   type IFideProvider,
   FIDE_PROVIDER,
 } from 'src/integration/interface/IFideProvider';
+import { PrismaService } from 'src/core/db/PrismaService';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -46,11 +47,13 @@ export class UserService implements IUserService {
     @Inject(PLAYER_PROFILE_REPOSITORY)
     private readonly playerProfileRepo: IPlayerProfileRepository,
 
-    @Inject(RATING_EVENT_REPOSITORY)
-    private readonly ratingEventRepo: IRatingEventRepository,
+    @Inject(FIDE_RATING_SNAPSHOT_REPOSITORY)
+    private readonly ratingSnapshotRepo: IFideRatingSnapshotRepository,
 
     @Inject(FIDE_PROVIDER)
     private readonly fideProvider: IFideProvider,
+
+    private readonly prisma: PrismaService,
   ) {}
 
   public async createStandardPlayer(
@@ -63,40 +66,43 @@ export class UserService implements IUserService {
         return Result.fail<StandardPlayerResponseDto>(validationResult.errors);
       }
 
-      // 2. Parse Date of Birth safely (UTC Midnight)
+      // 2. Determine Role (FIDE_PLAYER vs NATIONAL_PLAYER vs UNRATED_PLAYER)
+      const targetRoleCode = playerData.fideId ? 'FIDE_PLAYER' : 'NATIONAL_PLAYER';
+      const role = await this.prisma.role.findUnique({
+        where: { code: targetRoleCode },
+      });
+
+      // 3. Parse Date of Birth safely (UTC Midnight)
       const [year, month, day] = playerData.dateOfBirth.split('-').map(Number);
       const parsedDateOfBirth = new Date(Date.UTC(year, month - 1, day));
 
-      // 3. Create Root User Record
+      // 4. Create Root User Record with assigned Role
       const user = await this.userRepo.create({
-        username: playerData.username,
-        email: playerData.email,
+        username:      playerData.username,
+        email:         playerData.email,
         phoneDialCode: playerData.phoneDialCode,
-        phoneNumber: playerData.phoneNumber,
+        phoneNumber:   playerData.phoneNumber,
+        roleId:        role?.id,
       });
 
-      // 4. Split fullName into firstName & lastName for User Profile
+      // 5. Split fullName into firstName & lastName
       const nameParts = playerData.fullName.trim().split(/\s+/);
       const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(' ') || firstName;
+      const lastName  = nameParts.slice(1).join(' ') || firstName;
 
       await this.userProfileRepo.create({
-        userId: user.id,
+        userId:      user.id,
         firstName,
         lastName,
-        username: playerData.username,
-        email: playerData.email,
-        phoneNumber: playerData.phoneNumber,
-        phoneNumber_dialCode: playerData.phoneDialCode,
-        gender: playerData.gender,
+        gender:      playerData.gender,
         dateOfBirth: parsedDateOfBirth,
       });
 
-      // 5. Conditionally Create Player Profile (ONLY IF FIDE ID EXISTS)
+      // 6. Create Player Profile (FIDE or Standard)
       let playerProfileDto: FidePlayerProfileDto | null = null;
 
       if (playerData.fideId) {
-        // Resolve FIDE Data from Provider
+        // ── FIDE Player ────────────────────────────────────────────────────
         const fideResult = await this.resolveFidePlayerData(playerData.fideId);
         if (fideResult.isFailure) {
           return Result.fail<StandardPlayerResponseDto>(fideResult.errors);
@@ -105,28 +111,27 @@ export class UserService implements IUserService {
         const { fideData, playerType, playerTitle, ratings, federation } =
           fideResult.value;
 
-        // Save PlayerProfile record in DB
+        const yearOfBirth = fideData?.yearOfBirth ?? year;
+
         const playerProfileEntity = await this.playerProfileRepo.create({
-          userId: user.id,
-          fullName: fideData?.fullName ?? playerData.fullName,
-          gender: playerData.gender,
-          dateOfBirth: parsedDateOfBirth,
-          fideId: playerData.fideId,
+          userId:          user.id,
+          fullName:        fideData?.fullName ?? playerData.fullName,
+          gender:          playerData.gender,
+          yearOfBirth,
+          fideId:          playerData.fideId,
           playerFederation: federation,
           playerType,
           playerTitle,
           classicalRating: ratings.classical,
-          blitzRating: ratings.blitz,
-          rapidRating: ratings.rapid,
+          blitzRating:     ratings.blitz,
+          rapidRating:     ratings.rapid,
         });
 
-        // Record Historical Rating Events
-        if (fideData?.ratingEvents?.length) {
-          await this.ratingEventRepo.createMany(
-            fideData.ratingEvents.map((event: any) => ({
-              ...event,
-              playerId: playerProfileEntity.id,
-            })),
+        // Bulk-insert historical FIDE rating snapshots
+        if (fideData?.ratingSnapshots?.length) {
+          await this.ratingSnapshotRepo.createMany(
+            playerProfileEntity.id,
+            fideData.ratingSnapshots,
           );
         }
 
@@ -135,14 +140,32 @@ export class UserService implements IUserService {
           playerProfileEntity,
           { excludeExtraneousValues: true },
         );
+      } else {
+        // ── Standard / Unrated Player ──────────────────────────────────────
+        const playerProfileEntity = await this.playerProfileRepo.create({
+          userId:          user.id,
+          fullName:        playerData.fullName,
+          gender:          playerData.gender,
+          yearOfBirth:     year,
+          playerType:      PlayerType.UNRATED,
+          classicalRating: 1500,
+          blitzRating:     1500,
+          rapidRating:     1500,
+        });
+
+        playerProfileDto = plainToInstance(
+          FidePlayerProfileDto,
+          playerProfileEntity,
+          { excludeExtraneousValues: true },
+        );
       }
 
-      // 6. Build Root Response Payload
+      // 7. Build Response DTO
       const rawResponse = {
         ...user,
-        gender: playerData.gender,
-        dateOfBirth: playerData.dateOfBirth, // Retains YYYY-MM-DD
-        playerProfile: playerProfileDto, // null if unrated, populated if FIDE
+        gender:        playerData.gender,
+        dateOfBirth:   playerData.dateOfBirth,
+        playerProfile: playerProfileDto,
       };
 
       const responseDto = plainToInstance(
@@ -152,8 +175,11 @@ export class UserService implements IUserService {
       );
 
       return Result.created<StandardPlayerResponseDto>(responseDto);
-    } catch (error) {
-      console.error('[UserService.createStandardPlayer] Error:', error);
+    } catch (error: any) {
+      console.error(
+        '[UserService.createStandardPlayer] Fatal Error:',
+        error?.stack || error,
+      );
       return Result.fail<StandardPlayerResponseDto>(
         AppError.failure(
           'INTERNAL_ERROR',
@@ -164,9 +190,8 @@ export class UserService implements IUserService {
     }
   }
 
-  /**
-   * Helper method to validate unique email, username, and phone number.
-   */
+  // ── Private Helpers ──────────────────────────────────────────────────────
+
   private async ValidatePlayerData(
     playerData: CreateStandardPlayerDto,
   ): Promise<Result<void>> {
@@ -217,9 +242,6 @@ export class UserService implements IUserService {
     return Result.ok();
   }
 
-  /**
-   * Helper method to resolve FIDE profiles and ratings.
-   */
   private async resolveFidePlayerData(fideId: string): Promise<
     Result<{
       fideData: any | null;
@@ -229,7 +251,8 @@ export class UserService implements IUserService {
       federation?: string;
     }>
   > {
-    const fideData = await this.fideProvider.getProfileAndEventsByFideId(fideId);
+    const fideData =
+      await this.fideProvider.getProfileAndSnapshotsByFideId(fideId);
 
     if (!fideData) {
       return Result.fail(
@@ -243,12 +266,12 @@ export class UserService implements IUserService {
 
     return Result.ok({
       fideData,
-      playerType: PlayerType.FIDE,
+      playerType:  PlayerType.FIDE,
       playerTitle: (fideData.playerTitle as PlayerTitle) ?? undefined,
       ratings: {
-        classical: fideData.classicalRating ?? 0,
-        blitz: fideData.blitzRating ?? 0,
-        rapid: fideData.rapidRating ?? 0,
+        classical: fideData.classicalRating ?? 1500,
+        blitz:     fideData.blitzRating     ?? 1500,
+        rapid:     fideData.rapidRating     ?? 1500,
       },
       federation: fideData.federation,
     });

@@ -10,7 +10,11 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
-import { Gender } from 'src/common/enums/user-gender';
+import { Gender } from '../../../../common/enums/user-gender';
+
+// ==========================================
+// REQUEST DTO
+// ==========================================
 
 export class CreateStandardPlayerDto {
   @ApiProperty({ example: 'kasparov' })
@@ -38,7 +42,7 @@ export class CreateStandardPlayerDto {
   @IsNotEmpty()
   fullName!: string;
 
-  @ApiProperty({ example: '1963-04-13' })
+  @ApiProperty({ example: '1963-04-13', description: 'Format strictly as YYYY-MM-DD' })
   @IsString()
   @IsNotEmpty()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
@@ -58,7 +62,7 @@ export class CreateStandardPlayerDto {
 }
 
 // ==========================================
-// PROFILES (Standard vs FIDE)
+// SUB-PROFILES (Standard vs FIDE)
 // ==========================================
 
 export class StandardPlayerProfileDto {
@@ -74,9 +78,9 @@ export class StandardPlayerProfileDto {
   @Expose()
   gender!: Gender;
 
-  @ApiProperty({ example: '1963-04-13T00:00:00.000Z' })
+  @ApiPropertyOptional({ example: 1963, description: 'Integer birth year' })
   @Expose()
-  dateOfBirth!: Date;
+  yearOfBirth?: number;
 
   @ApiProperty({ example: 'UNRATED' })
   @Expose()
@@ -119,7 +123,7 @@ export class StandardPlayerResponseDto {
   id!: string;
 
   @ApiProperty({ example: 'kasparov' })
-  @Expose({ name: 'userName' }) // Maps domain `userName` to `username`
+  @Expose()
   username!: string;
 
   @ApiProperty({ example: 'garry.kasparov@example.com' })
@@ -127,11 +131,11 @@ export class StandardPlayerResponseDto {
   email!: string;
 
   @ApiPropertyOptional({ example: '+962' })
-  @Expose({ name: 'phoneNumber_dialCode' })
+  @Expose({ name: 'phoneDialCode' })
   phoneDialCode?: string;
 
   @ApiPropertyOptional({ example: '791234567' })
-  @Expose({ name: 'phoeneNumber' })
+  @Expose({ name: 'phoneNumber' })
   phoneNumber?: string;
 
   @ApiProperty({ enum: Gender, example: Gender.MALE })
@@ -143,8 +147,9 @@ export class StandardPlayerResponseDto {
   dateOfBirth!: Date;
 
   @ApiPropertyOptional({
-    description: 'Present only when player has FIDE rating data',
+    description: 'Present only when player has FIDE rating data or profile',
   })
   @Expose()
+  @Type(() => FidePlayerProfileDto)
   playerProfile?: FidePlayerProfileDto | StandardPlayerProfileDto;
 }

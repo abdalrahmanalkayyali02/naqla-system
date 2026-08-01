@@ -1,9 +1,12 @@
-
-import { Injectable } from "@nestjs/common";
-import { CreatePlayerProfileData, IPlayerProfileRepository, UpdatePlayerProfileData, UpdateRatingsData } from "./interface/IPlayerProfileRepository";
-import { PrismaService } from "src/core/db/PrismaService";
-import { IPlayerProfile } from "./contract/playerProfile";
-
+import { Injectable } from '@nestjs/common';
+import {
+  CreatePlayerProfileData,
+  IPlayerProfileRepository,
+  UpdatePlayerProfileData,
+  UpdateRatingsData,
+} from './interface/IPlayerProfileRepository';
+import { PrismaService } from 'src/core/db/PrismaService';
+import { IPlayerProfile } from './contract/playerProfile';
 
 @Injectable()
 export class PlayerProfileRepository implements IPlayerProfileRepository {
@@ -19,10 +22,10 @@ export class PlayerProfileRepository implements IPlayerProfileRepository {
         playerFederation: data.playerFederation,
         playerType: data.playerType as any,
         playerTitle: data.playerTitle as any,
-        classicalRating: data.classicalRating ?? 0,
-        blitzRating: data.blitzRating ?? 0,
-        rapidRating: data.rapidRating ?? 0,
-        dateOfBirth: data.dateOfBirth,
+        classicalRating: data.classicalRating ?? 1500,
+        blitzRating: data.blitzRating ?? 1500,
+        rapidRating: data.rapidRating ?? 1500,
+        yearOfBirth: data.yearOfBirth, // Updated: matches schema model
       },
     });
     return result as unknown as IPlayerProfile;
@@ -65,7 +68,7 @@ export class PlayerProfileRepository implements IPlayerProfileRepository {
         classicalRating: data.classicalRating,
         blitzRating: data.blitzRating,
         rapidRating: data.rapidRating,
-        dateOfBirth: data.dateOfBirth,
+        yearOfBirth: data.yearOfBirth, // Updated: matches schema model
       },
     });
     return result as unknown as IPlayerProfile;

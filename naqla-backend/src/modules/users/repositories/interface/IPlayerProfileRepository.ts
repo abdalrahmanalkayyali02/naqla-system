@@ -1,17 +1,16 @@
 // src/modules/players/domain/repositories/player-profile.repository.interface.ts
 
-import { PlayerTitle } from "src/common/enums/player-title";
-import { PlayerType } from "src/common/enums/player-type";
-import { Gender } from "src/common/enums/user-gender";
-import { IPlayerProfile } from "../contract/playerProfile";
-
+import { PlayerTitle } from 'src/common/enums/player-title';
+import { PlayerType } from 'src/common/enums/player-type';
+import { Gender } from 'src/common/enums/user-gender';
+import { IPlayerProfile } from '../contract/playerProfile';
 
 export interface CreatePlayerProfileData {
   userId: string;
   fullName: string;
   gender: Gender;
+  yearOfBirth?: number; // Updated: Changed from dateOfBirth: Date to integer year
   fideId?: string;
-  dateOfBirth: Date;
   playerFederation?: string;
   playerType?: PlayerType;
   playerTitle?: PlayerTitle;
@@ -23,6 +22,7 @@ export interface CreatePlayerProfileData {
 export interface UpdatePlayerProfileData {
   fullName?: string;
   gender?: Gender;
+  yearOfBirth?: number; // Updated: Changed from dateOfBirth: Date to integer year
   fideId?: string;
   playerFederation?: string;
   playerType?: PlayerType;
@@ -30,7 +30,6 @@ export interface UpdatePlayerProfileData {
   classicalRating?: number;
   blitzRating?: number;
   rapidRating?: number;
-  dateOfBirth?: Date;
 }
 
 export interface UpdateRatingsData {

@@ -1,4 +1,5 @@
 // src/main.ts
+import 'dotenv/config'; // ← MUST be first: populates process.env before any module loads
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

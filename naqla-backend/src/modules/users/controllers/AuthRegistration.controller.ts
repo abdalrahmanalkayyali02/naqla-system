@@ -22,7 +22,7 @@ import {
 import {
   CreateStandardPlayerDto,
   StandardPlayerResponseDto,
-} from 'src/modules/users/dtos/player/create-standerPlayer.dtos';
+} from '../dtos/player/create-standerPlayer.dtos';
 import type { IUserService } from 'src/modules/users/services/interface/IUserService';
 import { handleResult } from 'src/common/utils/handleResult';
 

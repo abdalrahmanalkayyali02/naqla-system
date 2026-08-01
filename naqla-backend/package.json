@@ -9,9 +9,10 @@
     "build": "nest build",
     "postbuild": "cp -r generated/prisma/*.js generated/prisma/*.d.ts generated/prisma/package.json generated/prisma/schema.prisma dist/generated/prisma/ 2>/dev/null; cp -r generated/prisma/runtime dist/generated/prisma/ 2>/dev/null; cp -r generated/prisma/internal dist/generated/prisma/ 2>/dev/null; true",
     "start": "bun run dist/main.js",
-    "start:dev": "npm run build && nest start --watch --exec \"bun run\"",
+    "start:dev": "nest start --watch",
     "prisma:generate": "bunx prisma generate",
-    "prisma:migrate": "bunx prisma migrate dev"
+    "prisma:migrate": "bunx prisma migrate dev",
+    "db:seed": "bun run src/core/db/seeds/seed.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -23,7 +24,9 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@scalar/nestjs-api-reference": "^1.2.12",
+    "@thallesp/nestjs-better-auth": "^2.7.0",
     "@types/pg": "^8.20.1",
+    "better-auth": "^1.6.25",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "pg": "^8.22.0",

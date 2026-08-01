@@ -29,6 +29,7 @@ export class UserRepository implements IUserRepository {
         email: data.email,
         phoneDialCode: data.phoneDialCode,
         phoneNumber: data.phoneNumber,
+        roleId: data.roleId,
       },
     });
     return this.mapToDomain(user);
