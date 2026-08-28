@@ -5,16 +5,15 @@ import { AccountRegistrationController } from './controllers/AccountRegistration
 import { AuthController } from './controllers/Auth.controller';
 
 // Service interface (DI token)
-import { ACCOUNT_REGISTRATION_SERVICE } from './services/interface/IAccountRegistrationService';
+import { ACCOUNT_REGISTRATION_SERVICE } from './interface/Service/IAccountRegistrationService';
 
 // FIDE external module
-import { FideModule } from 'src/modules/fide/fide.module';
 
 // Repository interfaces (DI tokens)
-import { USER_REPOSITORY } from './repositories/interface/IUserReposoitory';
-import { USER_PROFILE_REPOSITORY } from './repositories/interface/IUsersProfileReposoitory';
-import { PLAYER_PROFILE_REPOSITORY } from './repositories/interface/IPlayerProfileRepository';
-import { FIDE_RATING_SNAPSHOT_REPOSITORY } from './repositories/interface/IFideRatingSnapshotRepository';
+import { USER_REPOSITORY } from './interface/Repo/IUserReposoitory';
+import { USER_PROFILE_REPOSITORY } from './interface/Repo/IUsersProfileReposoitory';
+import { PLAYER_PROFILE_REPOSITORY } from './interface/Repo/IPlayerProfileRepository';
+import { FIDE_RATING_SNAPSHOT_REPOSITORY } from './interface/Repo/IFideRatingSnapshotRepository';
 
 // Repository implementations
 import { UserRepository } from './repositories/UserReposoitory';
@@ -24,13 +23,21 @@ import { FideRatingSnapshotRepository } from './repositories/FideRatingSnapshotR
 
 // Services
 import { AccountRegistrationService } from './services/AccountRegistrationService';
+import { FIDE_PROVIDER } from 'src/integration/interface/IFideProvider';
+import { LichessFideProviderAdapter } from 'src/integration/Provider/LichessFideProviderAdapter';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [
-    FideModule, // provides & exports FIDE_PROVIDER + LichessFideProviderAdapter
+imports: [
+    HttpModule, 
   ],
   controllers: [AccountRegistrationController, AuthController],
   providers: [
+
+    {
+      provide: FIDE_PROVIDER,
+      useClass: LichessFideProviderAdapter,
+    },
     // ── Service ──────────────────────────────────────────────────────────
     {
       provide:  ACCOUNT_REGISTRATION_SERVICE,

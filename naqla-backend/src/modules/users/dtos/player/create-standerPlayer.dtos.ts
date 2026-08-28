@@ -12,9 +12,8 @@ import {
   Matches,
 } from 'class-validator';
 import { Gender } from '../../../../common/enums/user-gender';
+import { msg } from 'src/common/const/msg.const';
 
-// Helper function لترتيب كائن الرسالة Bilingual
-const msg = (en: string, ar: string) => JSON.stringify({ en, ar });
 
 // ==========================================
 // REQUEST DTO
@@ -70,6 +69,8 @@ export class CreateStandardPlayerDto {
   @IsOptional()
   fideId?: string;
 }
+
+
 
 // ==========================================
 // SUB-PROFILES (Standard vs FIDE)
