@@ -2,8 +2,8 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/db/PrismaService';
-import { CreateUserProfileData, IUserProfileRepository, UpdateUserProfileData } from './interface/IUsersProfileReposoitory';
-import { IUserProfile } from './contract/UserProfile';
+import { CreateUserProfileData, IUserProfileRepository, UpdateUserProfileData } from '../interface/Repo/IUsersProfileReposoitory';
+import { IUserProfile } from 'src/core/db/contracts/UserProfile';
 
 
 @Injectable()

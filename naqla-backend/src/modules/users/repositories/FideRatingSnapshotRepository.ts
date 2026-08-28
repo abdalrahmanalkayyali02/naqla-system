@@ -3,11 +3,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/db/PrismaService';
 import { TimeControlCategory } from 'src/common/enums/time-control-category';
-import { IFideRatingSnapshot } from './contract/fideRatingSnapshot';
 import {
   CreateFideRatingSnapshotData,
   IFideRatingSnapshotRepository,
-} from './interface/IFideRatingSnapshotRepository';
+} from '../interface/Repo/IFideRatingSnapshotRepository';
+import { IFideRatingSnapshot } from 'src/core/db/contracts/fideRatingSnapshot';
 
 @Injectable()
 export class FideRatingSnapshotRepository implements IFideRatingSnapshotRepository {

@@ -4,19 +4,13 @@
 			"path": "../naqla-backend"
 		},
 		{
-			"path": "../participant-portal"
-		},
-		{
-			"path": "../organization-portal"
-		},
-		{
 			"path": "../naqla-system-workspace"
 		},
 		{
-			"path": "../naqla_mobile"
+			"path": "../naqla-admin-portal"
 		},
 		{
-			"path": "../naqla-system-public"
+			"path": "../naqla-public-protal-next"
 		}
 	],
 	"settings": {}

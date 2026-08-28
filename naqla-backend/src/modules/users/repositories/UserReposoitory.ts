@@ -4,8 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/db/PrismaService';
 
 import { UserStatus } from 'src/common/enums/user-status';
-import { CreateUserData, IUserRepository, UpdateUserData } from './interface/IUserReposoitory';
-import { IUser } from './contract/User';
+import { CreateUserData, IUserRepository, UpdateUserData } from '../interface/Repo/IUserReposoitory';
+import { IUser } from 'src/core/db/contracts/User';
 
 @Injectable()
 export class UserRepository implements IUserRepository {

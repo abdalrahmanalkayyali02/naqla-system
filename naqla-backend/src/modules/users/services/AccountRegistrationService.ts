@@ -13,11 +13,14 @@ import {
 } from 'src/integration/interface/IFideProvider';
 import { PrismaService } from 'src/core/db/PrismaService';
 import { CreateStandardPlayerDto, StandardPlayerResponseDto, FidePlayerProfileDto } from '../dtos/player/create-standerPlayer.dtos';
-import { FIDE_RATING_SNAPSHOT_REPOSITORY, type IFideRatingSnapshotRepository } from '../repositories/interface/IFideRatingSnapshotRepository';
-import { PLAYER_PROFILE_REPOSITORY, type IPlayerProfileRepository } from '../repositories/interface/IPlayerProfileRepository';
-import { USER_REPOSITORY, type IUserRepository } from '../repositories/interface/IUserReposoitory';
-import { USER_PROFILE_REPOSITORY, type IUserProfileRepository } from '../repositories/interface/IUsersProfileReposoitory';
-import { IAccountRegistrationService } from './interface/IAccountRegistrationService';
+import { CreateStandardArbiterDto, RegisterArbiterGoogleDto, ArbiterResponseDto } from '../dtos/aribiter/create-arbiter.dtos';
+import { CreateStandardOrganizerDto, OrganizerResponseDto } from '../dtos/orginizer/create-organizer.dtos';
+import { FIDE_RATING_SNAPSHOT_REPOSITORY, type IFideRatingSnapshotRepository } from '../interface/Repo/IFideRatingSnapshotRepository';
+import { PLAYER_PROFILE_REPOSITORY, type IPlayerProfileRepository } from '../interface/Repo/IPlayerProfileRepository';
+import { USER_REPOSITORY, type IUserRepository } from '../interface/Repo/IUserReposoitory';
+import { USER_PROFILE_REPOSITORY, type IUserProfileRepository } from '../interface/Repo/IUsersProfileReposoitory';
+import { IAccountRegistrationService } from '../interface/Service/IAccountRegistrationService';
+import { RegisterPlayerGoogleDto } from '../dtos/player/create-google-player.dtos';
 
 
 @Injectable()
@@ -194,16 +197,38 @@ export class AccountRegistrationService implements IAccountRegistrationService {
     }
   }
 
+  public async createGooglePlayer(
+    googleData: RegisterPlayerGoogleDto,
+  ): Promise<Result<StandardPlayerResponseDto>> {
+    return Result.fail(AppError.failure('NOT_IMPLEMENTED', 'Not implemented yet', 'غير منفذ بعد'));
+  }
+
+  public async createStandardArbiter(
+    arbiterData: CreateStandardArbiterDto,
+  ): Promise<Result<ArbiterResponseDto>> {
+    return Result.fail(AppError.failure('NOT_IMPLEMENTED', 'Not implemented yet', 'غير منفذ بعد'));
+  }
+
+  public async createGoogleArbiter(
+    googleData: RegisterArbiterGoogleDto,
+  ): Promise<Result<ArbiterResponseDto>> {
+    return Result.fail(AppError.failure('NOT_IMPLEMENTED', 'Not implemented yet', 'غير منفذ بعد'));
+  }
+
+  public async createStandardOrganizer(
+    organizerData: CreateStandardOrganizerDto,
+  ): Promise<Result<OrganizerResponseDto>> {
+    return Result.fail(AppError.failure('NOT_IMPLEMENTED', 'Not implemented yet', 'غير منفذ بعد'));
+  }
+
   // ── Private Helpers ──────────────────────────────────────────────────────
 
   private async validatePlayerData(
     playerData: CreateStandardPlayerDto,
   ): Promise<Result<void>> {
-    const errors: AppError[] = [];
-
     const existingEmail = await this.userRepo.findByEmail?.(playerData.email);
     if (existingEmail) {
-      errors.push(
+      return Result.fail(
         AppError.validation(
           'EMAIL_ALREADY_EXISTS',
           'Email address is already in use.',
@@ -216,7 +241,7 @@ export class AccountRegistrationService implements IAccountRegistrationService {
       playerData.username,
     );
     if (existingUsername) {
-      errors.push(
+      return Result.fail(
         AppError.validation(
           'USERNAME_ALREADY_EXISTS',
           'Username is already taken.',
@@ -230,17 +255,13 @@ export class AccountRegistrationService implements IAccountRegistrationService {
       playerData.phoneNumber,
     );
     if (existingPhone) {
-      errors.push(
+      return Result.fail(
         AppError.validation(
           'PHONE_ALREADY_EXISTS',
           'Phone number is already registered.',
           'رقم الهاتف مسجل بالفعل.',
         ),
       );
-    }
-
-    if (errors.length > 0) {
-      return Result.fail(errors);
     }
 
     return Result.ok();

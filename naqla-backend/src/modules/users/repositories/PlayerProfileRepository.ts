@@ -4,9 +4,9 @@ import {
   IPlayerProfileRepository,
   UpdatePlayerProfileData,
   UpdateRatingsData,
-} from './interface/IPlayerProfileRepository';
+} from '../interface/Repo/IPlayerProfileRepository';
 import { PrismaService } from 'src/core/db/PrismaService';
-import { IPlayerProfile } from './contract/playerProfile';
+import { IPlayerProfile } from 'src/core/db/contracts/playerProfile';
 
 @Injectable()
 export class PlayerProfileRepository implements IPlayerProfileRepository {

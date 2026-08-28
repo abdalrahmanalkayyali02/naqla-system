@@ -23,8 +23,19 @@ import {
   CreateStandardPlayerDto,
   StandardPlayerResponseDto,
 } from '../../users/dtos/player/create-standerPlayer.dtos';
+import {
+  CreateStandardArbiterDto,
+  RegisterArbiterGoogleDto,
+  ArbiterResponseDto,
+} from '../../users/dtos/aribiter/create-arbiter.dtos';
+import {
+  CreateStandardOrganizerDto,
+  OrganizerResponseDto,
+} from '../../users/dtos/orginizer/create-organizer.dtos';
+
 import { handleResult } from 'src/common/utils/handleResult';
-import { ACCOUNT_REGISTRATION_SERVICE, type IAccountRegistrationService } from '../services/interface/IAccountRegistrationService';
+import { ACCOUNT_REGISTRATION_SERVICE, type IAccountRegistrationService } from '../interface/Service/IAccountRegistrationService';
+import { RegisterPlayerGoogleDto } from '../dtos/player/create-google-player.dtos';
 
 
 @ApiTags('Account Registration')
@@ -63,21 +74,19 @@ export class AccountRegistrationController {
   @Post('player/google')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register Player via Google OAuth' })
+  @ApiConsumes('application/json')
+  @ApiProduces('application/json')
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    type: StandardPlayerResponseDto,
+  })
   public async registerPlayerGoogle(
+    @Body() dto: RegisterPlayerGoogleDto,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // TODO: Google player registration logic via Better Auth OAuth Provider
-  }
-
-  @Post('player/apple')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register Player via Apple ID' })
-  public async registerPlayerApple(
-    @Req() req: Request,
-    @Res() res: Response,
-  ): Promise<void> {
-    // TODO: Apple player registration logic
+    const result = await this.accountRegistrationService.createGooglePlayer(dto);
+    handleResult(req, res, result);
   }
 
   // ==========================================
@@ -90,21 +99,37 @@ export class AccountRegistrationController {
     summary: 'Register Standard Arbiter',
     description: 'Registers an official chess arbiter account via credentials.',
   })
+  @ApiConsumes('application/json')
+  @ApiProduces('application/json')
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    type: ArbiterResponseDto,
+  })
   public async registerStandardArbiter(
+    @Body() dto: CreateStandardArbiterDto,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // TODO: Standard arbiter registration logic
+    const result = await this.accountRegistrationService.createStandardArbiter(dto);
+    handleResult(req, res, result);
   }
 
   @Post('arbiter/google')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register Arbiter via Google OAuth' })
+  @ApiConsumes('application/json')
+  @ApiProduces('application/json')
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    type: ArbiterResponseDto,
+  })
   public async registerArbiterGoogle(
+    @Body() dto: RegisterArbiterGoogleDto,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // TODO: Google arbiter registration logic
+    const result = await this.accountRegistrationService.createGoogleArbiter(dto);
+    handleResult(req, res, result);
   }
 
   // ==========================================
@@ -117,10 +142,18 @@ export class AccountRegistrationController {
     summary: 'Register Standard Organizer',
     description: 'Registers a tournament organizer account via credentials.',
   })
+  @ApiConsumes('application/json')
+  @ApiProduces('application/json')
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    type: OrganizerResponseDto,
+  })
   public async registerStandardOrganizer(
+    @Body() dto: CreateStandardOrganizerDto,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // TODO: Standard organizer registration logic
+    const result = await this.accountRegistrationService.createStandardOrganizer(dto);
+    handleResult(req, res, result);
   }
 }

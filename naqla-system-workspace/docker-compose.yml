@@ -1,76 +1,156 @@
-version: '3.8'
+networks:
+  naqla-system:
+    name: naqla-system
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  redisinsight_data:
+  cloudbeaver_data:
 
 services:
-  db:
-    image: postgres:15
-    container_name: naqla-db
+  # -------------------------------------------------------------------------
+  # PostgreSQL (with Healthcheck)
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: naqla-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: naqla-system
-      POSTGRES_DB: naqla-system
+      POSTGRES_USER: ${POSTGRES_USER:-naqla_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-naqla_password_123}
+      POSTGRES_DB: ${POSTGRES_DB:-naqla_db}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - naqla-db-data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-naqla_user} -d ${POSTGRES_DB:-naqla_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - naqla-system
 
+  # -------------------------------------------------------------------------
+  # Redis (with Healthcheck)
+  # -------------------------------------------------------------------------
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: naqla-redis
-    command: redis-server --requirepass redis
-    ports:
-      - "6379:6379"
     restart: unless-stopped
+    ports:
+      - "6380:6379" # Mapped to 6380 on host to avoid any host-level Redis conflicts
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - naqla-system
 
+  # -------------------------------------------------------------------------
+  # CloudBeaver (Postgres UI)
+  # -------------------------------------------------------------------------
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: naqla-dbeaver-ui
+    restart: unless-stopped
+    ports:
+      - "8978:8978"
+    volumes:
+      - cloudbeaver_data:/opt/cloudbeaver/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - naqla-system
+
+  # -------------------------------------------------------------------------
+  # RedisInsight (Redis UI)
+  # -------------------------------------------------------------------------
   redisinsight:
-    image: redislabs/redisinsight:latest
-    container_name: naqla-redisinsight
-    ports:
-      - "8001:5540"
+    image: redis/redisinsight:latest
+    container_name: naqla-redis-ui
     restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - naqla-system
 
+  # -------------------------------------------------------------------------
+  # NestJS Backend API
+  # -------------------------------------------------------------------------
+  backend:
+    build:
+      context: ../naqla-backend
+      dockerfile: Dockerfile
+    container_name: naqla-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-naqla_user}:${POSTGRES_PASSWORD:-naqla_password_123}@postgres:5432/${POSTGRES_DB:-naqla_db}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - naqla-system
+
+  # -------------------------------------------------------------------------
+  # Frontends
+  # -------------------------------------------------------------------------
+  admin-ui:
+    build:
+      context: ../naqla-admin-portal
+      dockerfile: Dockerfile
+    container_name: naqla-admin-ui
+    restart: unless-stopped
+    ports:
+      - "3012:3012"
+    networks:
+      - naqla-system
+
+  public-ui:
+    build:
+      context: ../naqla-public-protal-next
+      dockerfile: Dockerfile
+    container_name: naqla-public-ui
+    restart: unless-stopped
+    ports:
+      - "3013:3013"
+    networks:
+      - naqla-system
+
+  # -------------------------------------------------------------------------
+  # Nginx Gateway
+  # -------------------------------------------------------------------------
   nginx:
     image: nginx:alpine
     container_name: naqla-nginx
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  # Mock Development Services
-  backend:
-    image: nginx:alpine
-    container_name: naqla-backend
-    ports:
-      - "5000:80"
-    restart: unless-stopped
-
-  frontend:
-    image: nginx:alpine
-    container_name: naqla-frontend
-    ports:
-      - "5012:80"
-    restart: unless-stopped
-
-  organization:
-    image: nginx:alpine
-    container_name: naqla-organization
-    ports:
-      - "5013:80"
-    restart: unless-stopped
-
-  participle:
-    image: nginx:alpine
-    container_name: naqla-participle
-    ports:
-      - "5014:80"
-    restart: unless-stopped
-
-volumes:
-  naqla-db-data:
+      - backend
+      - admin-ui
+      - public-ui
+    networks:
+      - naqla-system
